@@ -80,6 +80,8 @@ All results are saved to a timestamped folder (or custom named folder with `--fo
 - **`RESULTS_README.md`**: Detailed guide for viewing and interpreting results
 - **`ScanFold_run.log`**: Complete analysis log
 
+For single-sequence FASTA input, the structure files keep the historical `{basename}.no_filter.ct/.dbn`, `{basename}.minus_1.ct/.dbn`, and `{basename}.minus_2.ct/.dbn` names. For multi-sequence FASTA input, those per-sequence files are written as `{basename}.{record_name}.no_filter.*`, `{basename}.{record_name}.minus_1.*`, and `{basename}.{record_name}.minus_2.*` so records do not overwrite each other.
+
 ## Examples
 
 ### Basic RNA structure scanning

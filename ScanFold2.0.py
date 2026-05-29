@@ -26,6 +26,7 @@ from datetime import datetime
 import os
 import sys
 import json
+from itertools import islice, tee
 
 ### Arguments
 parser = argparse.ArgumentParser()
@@ -121,11 +122,18 @@ else:
 
 ### Start main loop
 with open(myfasta, 'r') as forward_fasta:
-    for cur_record in SeqIO.parse(forward_fasta, "fasta"):
+    record_probe, records = tee(SeqIO.parse(forward_fasta, "fasta"))
+    multi_record_input = sum(1 for _ in islice(record_probe, 2)) > 1
+
+    for cur_record in records:
         df = pd.DataFrame(columns = ["Start", "End", "Temperature", "NativeMFE",
             "Z-score", "p-value", "ED", "Sequeunce", "Structure", "centroid"])
         read_name = cur_record.name
         name = read_name
+        structure_basename = basename if not multi_record_input else f"{basename}.{read_name}"
+        no_filter_base = f"{structure_basename}.no_filter"
+        minus_1_base = f"{structure_basename}.minus_1"
+        minus_2_base = f"{structure_basename}.minus_2"
         ### Create output files with absolute paths
         output = str(read_name+"."+os.path.basename(myfasta)+".ScanFold.")
         outname = str(read_name+".win_"+str(window_size)+".stp_"+str(step_size)+".csv")
@@ -537,14 +545,14 @@ with open(myfasta, 'r') as forward_fasta:
 
         strand = 1  # 1 for forward strand, consistent with ScanFoldFold.py
         write_bp(best_bps, get_output_path(basename+cur_record.name+".ALL.bp"), start_coordinate, name, minz)
-        write_ct(final_partners, get_output_path(str(basename)+".no_filter.ct"), float(10), strand, name, start_coordinate)
-        write_ct(final_partners, get_output_path(str(basename)+".minus_1.ct"), float(-1), strand, name, start_coordinate)
-        write_ct(final_partners, get_output_path(str(basename)+".minus_2.ct"), float(-2), strand, name, start_coordinate)
+        write_ct(final_partners, get_output_path(no_filter_base+".ct"), float(10), strand, name, start_coordinate)
+        write_ct(final_partners, get_output_path(minus_1_base+".ct"), float(-1), strand, name, start_coordinate)
+        write_ct(final_partners, get_output_path(minus_2_base+".ct"), float(-2), strand, name, start_coordinate)
         # makedbn expects base filename without extension and adds .ct/.dbn itself
         # We need to use the full path without extension
-        makedbn(os.path.join(output_folder, str(basename)+".no_filter"), "NoFilter")
-        makedbn(os.path.join(output_folder, str(basename)+".minus_1"), "Zavg_-1")
-        makedbn(os.path.join(output_folder, str(basename)+".minus_2"), "Zavg_-2")
+        makedbn(get_output_path(no_filter_base), "NoFilter")
+        makedbn(get_output_path(minus_1_base), "Zavg_-1")
+        makedbn(get_output_path(minus_2_base), "Zavg_-2")
         write_bp(final_partners, get_output_path(outname+".bp"), start_coordinate, name, minz)
         write_wig_dict(final_partners, get_output_path(outname+".Zavg.wig"), name, step_size, "zscore")
         write_wig(mfe_list, step_size, cur_record.name, get_output_path(outname+".scan-MFE.wig"))
@@ -575,12 +583,12 @@ with open(myfasta, 'r') as forward_fasta:
             readme.write(f"- `{outname}.ScanFold.FinalPartners.txt` - Final base pair partners\n")
             readme.write(f"- `{outname}.ScanFold.log` - Detailed analysis log\n\n")
             readme.write(f"### Structure Files\n")
-            readme.write(f"- `{basename}.no_filter.ct` - CT file with all base pairs\n")
-            readme.write(f"- `{basename}.minus_1.ct` - CT file filtered at Z ≤ -1\n")
-            readme.write(f"- `{basename}.minus_2.ct` - CT file filtered at Z ≤ -2\n")
-            readme.write(f"- `{basename}.no_filter.dbn` - Dot-bracket notation (all pairs)\n")
-            readme.write(f"- `{basename}.minus_1.dbn` - Dot-bracket notation (Z ≤ -1)\n")
-            readme.write(f"- `{basename}.minus_2.dbn` - Dot-bracket notation (Z ≤ -2)\n\n")
+            readme.write(f"- `{no_filter_base}.ct` - CT file with all base pairs\n")
+            readme.write(f"- `{minus_1_base}.ct` - CT file filtered at Z ≤ -1\n")
+            readme.write(f"- `{minus_2_base}.ct` - CT file filtered at Z ≤ -2\n")
+            readme.write(f"- `{no_filter_base}.dbn` - Dot-bracket notation (all pairs)\n")
+            readme.write(f"- `{minus_1_base}.dbn` - Dot-bracket notation (Z ≤ -1)\n")
+            readme.write(f"- `{minus_2_base}.dbn` - Dot-bracket notation (Z ≤ -2)\n\n")
             readme.write(f"### Track Files (WIG format)\n")
             readme.write(f"- `{outname}.scan-zscores.wig` - Z-scores track\n")
             readme.write(f"- `{outname}.scan-MFE.wig` - MFE values track\n")
