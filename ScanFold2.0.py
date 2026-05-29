@@ -26,6 +26,7 @@ from datetime import datetime
 import os
 import sys
 import json
+from itertools import islice, tee
 
 ### Arguments
 parser = argparse.ArgumentParser()
@@ -121,11 +122,10 @@ else:
 
 ### Start main loop
 with open(myfasta, 'r') as forward_fasta:
-    records = list(SeqIO.parse(forward_fasta, "fasta"))
+    record_probe, records = tee(SeqIO.parse(forward_fasta, "fasta"))
+    multi_record_input = sum(1 for _ in islice(record_probe, 2)) > 1
 
-multi_record_input = len(records) > 1
-
-for cur_record in records:
+    for cur_record in records:
         df = pd.DataFrame(columns = ["Start", "End", "Temperature", "NativeMFE",
             "Z-score", "p-value", "ED", "Sequeunce", "Structure", "centroid"])
         read_name = cur_record.name
